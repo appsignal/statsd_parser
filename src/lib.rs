@@ -6,7 +6,10 @@ mod parser;
 pub enum MetricType {
     Gauge,
     Counter,
-    Timing
+    Timing,
+    Histogram,
+    Meter,
+    Unknown(String)
 }
 
 #[derive(Debug,PartialEq)]
@@ -66,6 +69,45 @@ mod tests {
         };
 
         assert_eq!(parse("gorets:233|ms"), expected);
+    }
+
+    #[test]
+    fn test_statsd_histogram() {
+        let expected = ParseResult {
+            name: "gorets".to_string(),
+            value: 233.0,
+            metric_type: MetricType::Histogram,
+            sample_rate: 0.0,
+            tags: HashMap::new()
+        };
+
+        assert_eq!(parse("gorets:233|h"), expected);
+    }
+
+    #[test]
+    fn test_statsd_meter() {
+        let expected = ParseResult {
+            name: "gorets".to_string(),
+            value: 233.0,
+            metric_type: MetricType::Meter,
+            sample_rate: 0.0,
+            tags: HashMap::new()
+        };
+
+        assert_eq!(parse("gorets:233|m"), expected);
+    }
+
+    #[test]
+    fn test_unknown_metric_type() {
+        let expected = ParseResult {
+            name: "gorets".to_string(),
+            value: 1.0,
+            metric_type: MetricType::Unknown("wrong".to_string()),
+            sample_rate: 0.0,
+            tags: HashMap::new()
+        };
+
+        assert_eq!(parse("gorets:1|wrong"), expected);
     }
 
     #[test]

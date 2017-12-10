@@ -3,15 +3,19 @@
 [![Build Status](https://travis-ci.org/appsignal/statsd_parser.svg?branch=master)](https://travis-ci.org/appsignal/statsd_parser)
 [![Crate](http://meritbadge.herokuapp.com/statsd_parser)](https://crates.io/crates/statsd_parser)
 
-Parses (part of) the [(Dog)StatsD protocol](https://docs.datadoghq.com/guides/dogstatsd/) and returns a struct with the values:
+Parses (Dog)StatsD strings and returns a normalized struct.
 
+All [standard StatsD](https://github.com/b/statsd_spec) metric types are implemented.
+For [DogStatsD](https://docs.datadoghq.com/guides/dogstatsd/) sample rates and tags are implemented.
 
 ```rust
+use statsd_parser;
+
 #[test]
 fn test_statsd_counter_with_sample_rate_and_tags() {
     let mut tags = HashMap::new();
-    tags.insert("foo".to_string(), "bar".to_string());
-    tags.insert("moo".to_string(), "maa".to_string());
+    tags.insert("hostname".to_string(), "frontend1".to_string());
+    tags.insert("dc".to_string(), "ams01".to_string());
 
     let expected = ParseResult {
         name: "gorets".to_string(),
@@ -21,7 +25,7 @@ fn test_statsd_counter_with_sample_rate_and_tags() {
         tags: tags
     };
 
-    assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), expected);
+    assert_eq!(statsd_parser::parse("gorets:1|c|@0.9|#hostname:frontend1,dc:ams01"), expected);
 }
 ```
 

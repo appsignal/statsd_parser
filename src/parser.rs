@@ -80,10 +80,12 @@ impl Parser {
 
         // The metric type should be everything until the next pipe, or the end
         let metric_type = match self.take_until('|').as_ref() {
-            "ms" => MetricType::Timing,
-            "c"  => MetricType::Counter,
-            "g"  => MetricType::Gauge,
-            other => panic!(format!("Could not get metric type from {:}", other))
+            "ms"  => MetricType::Timing,
+            "c"   => MetricType::Counter,
+            "g"   => MetricType::Gauge,
+            "m"   => MetricType::Meter,
+            "h"   => MetricType::Histogram,
+            other => MetricType::Unknown(other.to_string())
         };
 
         // The next part can either be the sample rate or tags,
@@ -125,5 +127,93 @@ impl Parser {
             sample_rate: sample_rate,
             tags: tags
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::collections::HashMap;
+
+    use super::Parser;
+    use {ParseResult,MetricType};
+
+    #[test]
+    fn test_take_until() {
+        let mut parser = Parser::new("this is a string".to_string());
+
+        // Returns up untill the first occurrence of the character
+        assert_eq!(parser.take_until(' '), "this");
+
+        // Moves the position to the first occurrence
+        assert_eq!(parser.pos, 5);
+
+        // Returns the rest of the string if character is not found
+        assert_eq!(parser.take_until('.'), "is a string");
+
+        // Moves the position to the end of the string
+        assert_eq!(parser.pos, 16);
+    }
+
+    #[test]
+    fn test_take_float_until() {
+        let mut parser = Parser::new("10.01|number|string".to_string());
+
+        // Returns float up untill the first occurrence of the character
+        assert_eq!(parser.take_float_until('|', 11.11), 10.01);
+
+        // Moves the position to the first occurrence
+        assert_eq!(parser.pos, 6);
+
+        // Returns the default if no float is found in the string up untill the character
+        assert_eq!(parser.take_float_until('|', 11.11), 11.11);
+
+        // Moves the position to the end of the string
+        assert_eq!(parser.pos, 13);
+    }
+
+    #[test]
+    fn test_peek() {
+        let mut parser = Parser::new("this is a string".to_string());
+        parser.pos = 10;
+
+        // Returns the character at the current position
+        assert_eq!(parser.peek(), Some('s'));
+
+        // It does not move the position
+        assert_eq!(parser.pos, 10);
+
+        parser.pos = 16;
+
+        // Returns None if we're at the end of the string
+        assert_eq!(parser.peek(), None);
+    }
+
+    #[test]
+    fn skip() {
+        let mut parser = Parser::new("foo#bar".to_string());
+        parser.pos = 3;
+        parser.skip();
+
+        // Increases the position by one
+        assert_eq!(parser.pos, 4);
+    }
+
+    #[test]
+    fn test_parse() {
+        let parser = Parser::new("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
+
+        let mut tags = HashMap::new();
+        tags.insert("hostname".to_string(), "frontend1".to_string());
+        tags.insert("namespace".to_string(), "web".to_string());
+
+        let expected = ParseResult {
+            name: "service.duration".to_string(),
+            value: 101.0,
+            metric_type: MetricType::Timing,
+            sample_rate: 0.9,
+            tags: tags
+        };
+
+        assert_eq!(parser.parse(), expected);
     }
 }
