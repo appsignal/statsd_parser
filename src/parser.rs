@@ -1,7 +1,40 @@
+use std::{error,fmt};
+use std::num::ParseFloatError;
 use std::vec::Vec;
 use std::collections::HashMap;
 
-use {MetricType, Metric};
+use {MetricType,Metric};
+
+#[derive(Debug,PartialEq)]
+pub enum ParseError {
+    /// No content in statsd message
+    EmptyInput,
+    /// Incomplete input in statsd message
+    IncompleteInput,
+    /// No name in input
+    NoName,
+    /// Value is not a float
+    ValueNotFloat,
+    /// Sample rate is not a float
+    SampleRateNotFloat,
+    /// Metric type is unknown
+    UnknownMetricType
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ParseError::EmptyInput => write!(f, "Empty input"),
+            ParseError::IncompleteInput => write!(f, "Incomplete input"),
+            ParseError::NoName => write!(f, "No name in input"),
+            ParseError::ValueNotFloat => write!(f, "Value is not a float"),
+            ParseError::SampleRateNotFloat => write!(f, "Sample rate is not a float"),
+            ParseError::UnknownMetricType => write!(f, "Unknown metric type")
+        }
+    }
+}
+
+impl error::Error for ParseError {}
 
 #[derive(Debug,PartialEq)]
 pub struct Parser {
@@ -45,13 +78,9 @@ impl Parser {
 
     /// Consumes the buffer untill the character is found
     /// or the end is reached, the result is parsed into a float
-    /// if that fails, the default is returned
-    fn take_float_until(&mut self, to_match: char, default: f64) -> f64 {
+    fn take_float_until(&mut self, to_match: char) -> Result<f64, ParseFloatError> {
         let string = self.take_until(to_match);
-        match string.parse() {
-            Ok(res) => res,
-            Err(_) => default
-        }
+        string.parse()
     }
 
     /// Returns the current character in the buffer
@@ -69,13 +98,23 @@ impl Parser {
     }
 
     /// Runs the parser, returns a Metric struct
-    pub fn parse(mut self) -> Metric {
+    pub fn parse(mut self) -> Result<Metric, ParseError> {
+        if self.buf.is_empty() {
+            return Err(ParseError::EmptyInput)
+        }
 
         // Start with the name
         let name = self.take_until(':');
 
+        if name.is_empty() {
+            return Err(ParseError::NoName)
+        }
+
         // The value should be everything until the first pipe (`|`)
-        let value = self.take_float_until('|', 0.0);
+        let value = match self.take_float_until('|') {
+            Ok(v) => v,
+            Err(_) => return Err(ParseError::ValueNotFloat)
+        };
 
         // The metric type should be everything until the next pipe, or the end
         let metric_type = match self.take_until('|').as_ref() {
@@ -84,7 +123,7 @@ impl Parser {
             "g"   => MetricType::Gauge,
             "m"   => MetricType::Meter,
             "h"   => MetricType::Histogram,
-            other => MetricType::Unknown(other.to_string())
+            _other => return Err(ParseError::UnknownMetricType)
         };
 
         // The next part can either be the sample rate or tags,
@@ -92,9 +131,12 @@ impl Parser {
         let sample_rate = match self.peek() {
             Some('@') => {
                 self.skip(); // Skip the `@`
-                self.take_float_until('|', 0.0)
+                match self.take_float_until('|') {
+                    Ok(v) => Some(v),
+                    Err(_) => return Err(ParseError::SampleRateNotFloat)
+                }
             }
-            _ => 0.0
+            _ => None
         };
 
         // Peek the remaining string, if it starts with a pound (`#`)
@@ -125,13 +167,13 @@ impl Parser {
             None
         };
 
-        return Metric {
+        Ok(Metric {
             name: name,
             value: value,
             metric_type: metric_type,
             sample_rate: sample_rate,
             tags: tags
-        }
+        })
     }
 }
 
@@ -164,13 +206,13 @@ mod tests {
         let mut parser = Parser::new("10.01|number|string".to_string());
 
         // Returns float up untill the first occurrence of the character
-        assert_eq!(parser.take_float_until('|', 11.11), 10.01);
+        assert_eq!(parser.take_float_until('|'), Ok(10.01));
 
         // Moves the position to the first occurrence
         assert_eq!(parser.pos, 6);
 
-        // Returns the default if no float is found in the string up untill the character
-        assert_eq!(parser.take_float_until('|', 11.11), 11.11);
+        // Returns err if not float
+        assert!(parser.take_float_until('|').is_err());
 
         // Moves the position to the end of the string
         assert_eq!(parser.pos, 13);
@@ -215,11 +257,11 @@ mod tests {
             name: "service.duration".to_string(),
             value: 101.0,
             metric_type: MetricType::Timing,
-            sample_rate: 0.9,
+            sample_rate: Some(0.9),
             tags: Some(tags)
         };
 
-        assert_eq!(parser.parse(), expected);
+        assert_eq!(parser.parse(), Ok(expected));
     }
 
     #[test]
@@ -230,10 +272,18 @@ mod tests {
             name: "service.duration".to_string(),
             value: 101.0,
             metric_type: MetricType::Timing,
-            sample_rate: 0.9,
+            sample_rate: Some(0.9),
             tags: None
         };
 
-        assert_eq!(parser.parse(), expected);
+        assert_eq!(parser.parse(), Ok(expected));
     }
+
+    #[test]
+    fn test_parse_invalid() {
+        let parser = Parser::new("service.duration:101|aaa|@0.9|".to_string());
+        assert!(parser.parse().is_err());
+    }
+
+    // Details of all supported statsd messages are test in lib.rs
 }

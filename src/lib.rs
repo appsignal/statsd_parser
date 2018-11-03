@@ -2,26 +2,28 @@ use std::collections::HashMap;
 
 mod parser;
 
+pub use parser::ParseError;
+
 #[derive(Debug,PartialEq)]
 pub enum MetricType {
     Gauge,
     Counter,
     Timing,
     Histogram,
-    Meter,
-    Unknown(String)
+    Meter
 }
 
 #[derive(Debug,PartialEq)]
 pub struct Metric {
     name: String,
     value: f64,
-    sample_rate: f64,
+    sample_rate: Option<f64>,
     metric_type: MetricType,
     tags: Option<HashMap<String, String>>
 }
 
-pub fn parse<S: Into<String>>(input: S) -> Metric {
+/// Parse a statsd string and return a metric or error message
+pub fn parse<S: Into<String>>(input: S) -> Result<Metric, ParseError> {
     parser::Parser::new(input.into()).parse()
 }
 
@@ -30,7 +32,7 @@ mod tests {
     use super::{MetricType, Metric};
     use std::collections::HashMap;
 
-    use super::parse;
+    use super::*;
 
     #[test]
     fn test_statsd_counter() {
@@ -38,11 +40,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: None
         };
 
-        assert_eq!(parse("gorets:1|c"), expected);
+        assert_eq!(parse("gorets:1|c"), Ok(expected));
     }
 
     #[test]
@@ -51,11 +53,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Gauge,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: None
         };
 
-        assert_eq!(parse("gorets:1|g"), expected);
+        assert_eq!(parse("gorets:1|g"), Ok(expected));
     }
 
     #[test]
@@ -64,11 +66,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Timing,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: None
         };
 
-        assert_eq!(parse("gorets:233|ms"), expected);
+        assert_eq!(parse("gorets:233|ms"), Ok(expected));
     }
 
     #[test]
@@ -77,11 +79,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Histogram,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: None
         };
 
-        assert_eq!(parse("gorets:233|h"), expected);
+        assert_eq!(parse("gorets:233|h"), Ok(expected));
     }
 
     #[test]
@@ -90,24 +92,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Meter,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: None
         };
 
-        assert_eq!(parse("gorets:233|m"), expected);
-    }
-
-    #[test]
-    fn test_unknown_metric_type() {
-        let expected = Metric {
-            name: "gorets".to_string(),
-            value: 1.0,
-            metric_type: MetricType::Unknown("wrong".to_string()),
-            sample_rate: 0.0,
-            tags: None
-        };
-
-        assert_eq!(parse("gorets:1|wrong"), expected);
+        assert_eq!(parse("gorets:233|m"), Ok(expected));
     }
 
     #[test]
@@ -116,11 +105,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
-            sample_rate: 0.5,
+            sample_rate: Some(0.5),
             tags: None
         };
 
-        assert_eq!(parse("gorets:1|c|@0.5"), expected);
+        assert_eq!(parse("gorets:1|c|@0.5"), Ok(expected));
     }
 
     #[test]
@@ -132,11 +121,11 @@ mod tests {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
-            sample_rate: 0.0,
+            sample_rate: None,
             tags: Some(tags)
         };
 
-        assert_eq!(parse("gorets:1|c|#foo:bar"), expected);
+        assert_eq!(parse("gorets:1|c|#foo:bar"), Ok(expected));
     }
 
     #[test]
@@ -149,10 +138,35 @@ mod tests {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
-            sample_rate: 0.9,
+            sample_rate: Some(0.9),
             tags: Some(tags)
         };
 
-        assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), expected);
+        assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), Ok(expected));
+    }
+
+    #[test]
+    fn test_statsd_empty() {
+        assert_eq!(parse(""), Err(ParseError::EmptyInput));
+    }
+
+    #[test]
+    fn test_statsd_no_name() {
+        assert_eq!(parse(":1|c"), Err(ParseError::NoName));
+    }
+
+    #[test]
+    fn test_statsd_value_not_float() {
+        assert_eq!(parse("gorets:aaa|h"), Err(ParseError::ValueNotFloat));
+    }
+
+    #[test]
+    fn test_statsd_sample_rate_not_float() {
+        assert_eq!(parse("gorets:1|c|@aaa"), Err(ParseError::SampleRateNotFloat));
+    }
+
+    #[test]
+    fn test_statsd_metric_type_unknown() {
+        assert_eq!(parse("gorets:1|wrong"), Err(ParseError::UnknownMetricType));
     }
 }
