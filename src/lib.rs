@@ -18,7 +18,7 @@ pub struct Metric {
     value: f64,
     sample_rate: f64,
     metric_type: MetricType,
-    tags: HashMap<String, String>
+    tags: Option<HashMap<String, String>>
 }
 
 pub fn parse<S: Into<String>>(input: S) -> Metric {
@@ -39,7 +39,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Counter,
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:1|c"), expected);
@@ -52,7 +52,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Gauge,
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:1|g"), expected);
@@ -65,7 +65,7 @@ mod tests {
             value: 233.0,
             metric_type: MetricType::Timing,
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:233|ms"), expected);
@@ -78,7 +78,7 @@ mod tests {
             value: 233.0,
             metric_type: MetricType::Histogram,
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:233|h"), expected);
@@ -91,7 +91,7 @@ mod tests {
             value: 233.0,
             metric_type: MetricType::Meter,
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:233|m"), expected);
@@ -104,7 +104,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Unknown("wrong".to_string()),
             sample_rate: 0.0,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:1|wrong"), expected);
@@ -117,7 +117,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Counter,
             sample_rate: 0.5,
-            tags: HashMap::new()
+            tags: None
         };
 
         assert_eq!(parse("gorets:1|c|@0.5"), expected);
@@ -133,7 +133,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Counter,
             sample_rate: 0.0,
-            tags: tags
+            tags: Some(tags)
         };
 
         assert_eq!(parse("gorets:1|c|#foo:bar"), expected);
@@ -150,7 +150,7 @@ mod tests {
             value: 1.0,
             metric_type: MetricType::Counter,
             sample_rate: 0.9,
-            tags: tags
+            tags: Some(tags)
         };
 
         assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), expected);

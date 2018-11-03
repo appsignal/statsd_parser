@@ -70,7 +70,6 @@ impl Parser {
 
     /// Runs the parser, returns a Metric struct
     pub fn parse(mut self) -> Metric {
-        let mut tags = HashMap::new();
 
         // Start with the name
         let name = self.take_until(':');
@@ -100,7 +99,9 @@ impl Parser {
 
         // Peek the remaining string, if it starts with a pound (`#`)
         // try and match tags
-        if Some('#') == self.peek() {
+        let tags = if Some('#') == self.peek() {
+            let mut tags = HashMap::new();
+
             self.skip(); // Skip the `#`
 
             // Loop over the remaining buffer and see
@@ -115,9 +116,13 @@ impl Parser {
                 if key.len() > 0 && val.len() > 0 {
                     tags.insert(key, val);
                 } else {
-                    break;
+                    break
                 }
             }
+
+            Some(tags)
+        } else {
+            None
         };
 
         return Metric {
@@ -199,7 +204,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse() {
+    fn test_parse_with_tags() {
         let parser = Parser::new("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
 
         let mut tags = HashMap::new();
@@ -211,7 +216,22 @@ mod tests {
             value: 101.0,
             metric_type: MetricType::Timing,
             sample_rate: 0.9,
-            tags: tags
+            tags: Some(tags)
+        };
+
+        assert_eq!(parser.parse(), expected);
+    }
+
+    #[test]
+    fn test_parse_without_tags() {
+        let parser = Parser::new("service.duration:101|ms|@0.9|".to_string());
+
+        let expected = Metric {
+            name: "service.duration".to_string(),
+            value: 101.0,
+            metric_type: MetricType::Timing,
+            sample_rate: 0.9,
+            tags: None
         };
 
         assert_eq!(parser.parse(), expected);
