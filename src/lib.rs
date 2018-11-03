@@ -13,7 +13,7 @@ pub enum MetricType {
 }
 
 #[derive(Debug,PartialEq)]
-pub struct ParseResult {
+pub struct Metric {
     name: String,
     value: f64,
     sample_rate: f64,
@@ -21,20 +21,20 @@ pub struct ParseResult {
     tags: HashMap<String, String>
 }
 
-pub fn parse<S: Into<String>>(input: S) -> ParseResult {
+pub fn parse<S: Into<String>>(input: S) -> Metric {
     parser::Parser::new(input.into()).parse()
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{MetricType, ParseResult};
+    use super::{MetricType, Metric};
     use std::collections::HashMap;
 
     use super::parse;
 
     #[test]
     fn test_statsd_counter() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
@@ -47,7 +47,7 @@ mod tests {
 
     #[test]
     fn test_statsd_gauge() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Gauge,
@@ -60,7 +60,7 @@ mod tests {
 
     #[test]
     fn test_statsd_time() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Timing,
@@ -73,7 +73,7 @@ mod tests {
 
     #[test]
     fn test_statsd_histogram() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Histogram,
@@ -86,7 +86,7 @@ mod tests {
 
     #[test]
     fn test_statsd_meter() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 233.0,
             metric_type: MetricType::Meter,
@@ -99,7 +99,7 @@ mod tests {
 
     #[test]
     fn test_unknown_metric_type() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Unknown("wrong".to_string()),
@@ -112,7 +112,7 @@ mod tests {
 
     #[test]
     fn test_statsd_counter_with_sample_rate() {
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
@@ -128,7 +128,7 @@ mod tests {
         let mut tags = HashMap::new();
         tags.insert("foo".to_string(), "bar".to_string());
 
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,
@@ -145,7 +145,7 @@ mod tests {
         tags.insert("foo".to_string(), "bar".to_string());
         tags.insert("moo".to_string(), "maa".to_string());
 
-        let expected = ParseResult {
+        let expected = Metric {
             name: "gorets".to_string(),
             value: 1.0,
             metric_type: MetricType::Counter,

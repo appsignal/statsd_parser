@@ -1,7 +1,7 @@
 use std::vec::Vec;
 use std::collections::HashMap;
 
-use {MetricType, ParseResult};
+use {MetricType, Metric};
 
 #[derive(Debug,PartialEq)]
 pub struct Parser {
@@ -68,8 +68,8 @@ impl Parser {
         self.pos += 1;
     }
 
-    /// Runs the parser, returns a ParseResult struct
-    pub fn parse(mut self) -> ParseResult {
+    /// Runs the parser, returns a Metric struct
+    pub fn parse(mut self) -> Metric {
         let mut tags = HashMap::new();
 
         // Start with the name
@@ -120,7 +120,7 @@ impl Parser {
             }
         };
 
-        return ParseResult {
+        return Metric {
             name: name,
             value: value,
             metric_type: metric_type,
@@ -135,7 +135,7 @@ mod tests {
     use std::collections::HashMap;
 
     use super::Parser;
-    use {ParseResult,MetricType};
+    use {Metric,MetricType};
 
     #[test]
     fn test_take_until() {
@@ -206,7 +206,7 @@ mod tests {
         tags.insert("hostname".to_string(), "frontend1".to_string());
         tags.insert("namespace".to_string(), "web".to_string());
 
-        let expected = ParseResult {
+        let expected = Metric {
             name: "service.duration".to_string(),
             value: 101.0,
             metric_type: MetricType::Timing,
