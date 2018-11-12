@@ -15,11 +15,11 @@ pub enum MetricType {
 
 #[derive(Debug,PartialEq)]
 pub struct Metric {
-    name: String,
-    value: f64,
-    sample_rate: Option<f64>,
-    metric_type: MetricType,
-    tags: Option<HashMap<String, String>>
+    pub name: String,
+    pub value: f64,
+    pub sample_rate: Option<f64>,
+    pub metric_type: MetricType,
+    pub tags: Option<HashMap<String, String>>
 }
 
 /// Parse a statsd string and return a metric or error message
