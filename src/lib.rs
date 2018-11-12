@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt;
 
 mod parser;
 
@@ -11,6 +12,18 @@ pub enum MetricType {
     Timing,
     Histogram,
     Meter
+}
+
+impl fmt::Display for MetricType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            MetricType::Gauge => write!(f, "gauge"),
+            MetricType::Counter => write!(f, "counter"),
+            MetricType::Timing => write!(f, "timing"),
+            MetricType::Histogram => write!(f, "histogram"),
+            MetricType::Meter => write!(f, "meter"),
+        }
+    }
 }
 
 #[derive(Debug,PartialEq)]
@@ -33,6 +46,15 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
+
+    #[test]
+    fn test_metric_type_display() {
+        assert_eq!("gauge", format!("{}", MetricType::Gauge));
+        assert_eq!("counter", format!("{}", MetricType::Counter));
+        assert_eq!("timing", format!("{}", MetricType::Timing));
+        assert_eq!("histogram", format!("{}", MetricType::Histogram));
+        assert_eq!("meter", format!("{}", MetricType::Meter));
+    }
 
     #[test]
     fn test_statsd_counter() {
