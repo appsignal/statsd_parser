@@ -38,7 +38,6 @@ impl error::Error for ParseError {}
 
 #[derive(Debug,PartialEq)]
 pub struct Parser {
-    buf: String,
     chars: Vec<char>,
     len: usize,
     pos: usize
@@ -50,7 +49,6 @@ impl Parser {
         let chars: Vec<char> = buf.chars().collect();
         let len = chars.len();
         Parser {
-            buf:   buf,
             chars: chars,
             len:   len,
             pos:   0
@@ -58,7 +56,7 @@ impl Parser {
     }
 
     /// Consumes the buffer until the given character is found
-    // or the end is reached
+    /// or the end is reached
     fn take_until(&mut self, to_match: char) -> String {
         let mut chars = Vec::new();
         loop {
@@ -99,7 +97,7 @@ impl Parser {
 
     /// Runs the parser, returns a Metric struct
     pub fn parse(mut self) -> Result<Metric, ParseError> {
-        if self.buf.is_empty() {
+        if self.chars.is_empty() {
             return Err(ParseError::EmptyInput)
         }
 

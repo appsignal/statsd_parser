@@ -146,6 +146,19 @@ mod tests {
     }
 
     #[test]
+    fn test_statsd_utf8_boundary() {
+        let expected = Metric {
+            name: "goretsβ".to_string(),
+            value: 1.0,
+            metric_type: MetricType::Counter,
+            sample_rate: None,
+            tags: None
+        };
+
+        assert_eq!(parse("goretsβ:1|c"), Ok(expected));
+    }
+
+    #[test]
     fn test_statsd_empty() {
         assert_eq!(parse(""), Err(ParseError::EmptyInput));
     }
