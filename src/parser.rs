@@ -1,7 +1,7 @@
 use std::{error,fmt};
 use std::num::ParseFloatError;
 use std::vec::Vec;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use {MetricType,Metric};
 
@@ -140,7 +140,7 @@ impl Parser {
         // Peek the remaining string, if it starts with a pound (`#`)
         // try and match tags
         let tags = if Some('#') == self.peek() {
-            let mut tags = HashMap::new();
+            let mut tags = BTreeMap::new();
 
             self.skip(); // Skip the `#`
 
@@ -177,7 +177,7 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use super::Parser;
     use {Metric,MetricType};
@@ -247,7 +247,7 @@ mod tests {
     fn test_parse_with_tags() {
         let parser = Parser::new("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
 
-        let mut tags = HashMap::new();
+        let mut tags = BTreeMap::new();
         tags.insert("hostname".to_string(), "frontend1".to_string());
         tags.insert("namespace".to_string(), "web".to_string());
 

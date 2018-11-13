@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::fmt;
 
 mod parser;
@@ -32,7 +32,7 @@ pub struct Metric {
     pub value: f64,
     pub sample_rate: Option<f64>,
     pub metric_type: MetricType,
-    pub tags: Option<HashMap<String, String>>
+    pub tags: Option<BTreeMap<String, String>>
 }
 
 /// Parse a statsd string and return a metric or error message
@@ -43,7 +43,7 @@ pub fn parse<S: Into<String>>(input: S) -> Result<Metric, ParseError> {
 #[cfg(test)]
 mod tests {
     use super::{MetricType, Metric};
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use super::*;
 
@@ -136,7 +136,7 @@ mod tests {
 
     #[test]
     fn test_statsd_counter_with_tags() {
-        let mut tags = HashMap::new();
+        let mut tags = BTreeMap::new();
         tags.insert("foo".to_string(), "bar".to_string());
 
         let expected = Metric {
@@ -152,7 +152,7 @@ mod tests {
 
     #[test]
     fn test_statsd_counter_with_sample_rate_and_tags() {
-        let mut tags = HashMap::new();
+        let mut tags = BTreeMap::new();
         tags.insert("foo".to_string(), "bar".to_string());
         tags.insert("moo".to_string(), "maa".to_string());
 
