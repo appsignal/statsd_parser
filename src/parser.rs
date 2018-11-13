@@ -148,15 +148,22 @@ impl Parser {
             // if we can find key/value pairs, separated by : and ,
             // in the format key:value,key:value
             loop {
-                let key = self.take_until(':');
-                let val = self.take_until(',');
-
-                // If we have both a key and a value, add it to the tags
-                // otherwise stop the loop
-                if key.len() > 0 && val.len() > 0 {
-                    tags.insert(key, val);
-                } else {
+                let tag = self.take_until(',');
+                if tag.is_empty() {
                     break
+                }
+
+                let mut split = tag.split(":");
+                match split.next() {
+                    Some(key) => match split.next() {
+                        Some(val) => {
+                            tags.insert(key.to_owned(), val.to_owned());
+                        },
+                        None => {
+                            tags.insert(key.to_owned(), "".to_owned());
+                        }
+                    },
+                    None => break
                 }
             }
 

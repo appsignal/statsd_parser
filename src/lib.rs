@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn test_statsd_counter_with_tags() {
+    fn test_statsd_counter_with_key_value_tags() {
         let mut tags = BTreeMap::new();
         tags.insert("foo".to_string(), "bar".to_string());
 
@@ -148,6 +148,23 @@ mod tests {
         };
 
         assert_eq!(parse("gorets:1|c|#foo:bar"), Ok(expected));
+    }
+
+    #[test]
+    fn test_statsd_counter_with_key_tags() {
+        let mut tags = BTreeMap::new();
+        tags.insert("foo".to_string(), "".to_string());
+        tags.insert("moo".to_string(), "".to_string());
+
+        let expected = Metric {
+            name: "gorets".to_string(),
+            value: 1.0,
+            metric_type: MetricType::Counter,
+            sample_rate: None,
+            tags: Some(tags)
+        };
+
+        assert_eq!(parse("gorets:1|c|#foo,moo"), Ok(expected));
     }
 
     #[test]
