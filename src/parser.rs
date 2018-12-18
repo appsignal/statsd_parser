@@ -1,11 +1,43 @@
+use std::{error,fmt};
+use std::num::ParseFloatError;
 use std::vec::Vec;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-use {MetricType, ParseResult};
+use {MetricType,Metric};
+
+#[derive(Debug,PartialEq)]
+pub enum ParseError {
+    /// No content in statsd message
+    EmptyInput,
+    /// Incomplete input in statsd message
+    IncompleteInput,
+    /// No name in input
+    NoName,
+    /// Value is not a float
+    ValueNotFloat,
+    /// Sample rate is not a float
+    SampleRateNotFloat,
+    /// Metric type is unknown
+    UnknownMetricType
+}
+
+impl fmt::Display for ParseError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            ParseError::EmptyInput => write!(f, "Empty input"),
+            ParseError::IncompleteInput => write!(f, "Incomplete input"),
+            ParseError::NoName => write!(f, "No name in input"),
+            ParseError::ValueNotFloat => write!(f, "Value is not a float"),
+            ParseError::SampleRateNotFloat => write!(f, "Sample rate is not a float"),
+            ParseError::UnknownMetricType => write!(f, "Unknown metric type")
+        }
+    }
+}
+
+impl error::Error for ParseError {}
 
 #[derive(Debug,PartialEq)]
 pub struct Parser {
-    buf: String,
     chars: Vec<char>,
     len: usize,
     pos: usize
@@ -17,7 +49,6 @@ impl Parser {
         let chars: Vec<char> = buf.chars().collect();
         let len = chars.len();
         Parser {
-            buf:   buf,
             chars: chars,
             len:   len,
             pos:   0
@@ -25,7 +56,7 @@ impl Parser {
     }
 
     /// Consumes the buffer until the given character is found
-    // or the end is reached
+    /// or the end is reached
     fn take_until(&mut self, to_match: char) -> String {
         let mut chars = Vec::new();
         loop {
@@ -45,13 +76,9 @@ impl Parser {
 
     /// Consumes the buffer untill the character is found
     /// or the end is reached, the result is parsed into a float
-    /// if that fails, the default is returned
-    fn take_float_until(&mut self, to_match: char, default: f64) -> f64 {
+    fn take_float_until(&mut self, to_match: char) -> Result<f64, ParseFloatError> {
         let string = self.take_until(to_match);
-        match string.parse() {
-            Ok(res) => res,
-            Err(_) => default
-        }
+        string.parse()
     }
 
     /// Returns the current character in the buffer
@@ -68,15 +95,24 @@ impl Parser {
         self.pos += 1;
     }
 
-    /// Runs the parser, returns a ParseResult struct
-    pub fn parse(mut self) -> ParseResult {
-        let mut tags = HashMap::new();
+    /// Runs the parser, returns a Metric struct
+    pub fn parse(mut self) -> Result<Metric, ParseError> {
+        if self.chars.is_empty() {
+            return Err(ParseError::EmptyInput)
+        }
 
         // Start with the name
         let name = self.take_until(':');
 
+        if name.is_empty() {
+            return Err(ParseError::NoName)
+        }
+
         // The value should be everything until the first pipe (`|`)
-        let value = self.take_float_until('|', 0.0);
+        let value = match self.take_float_until('|') {
+            Ok(v) => v,
+            Err(_) => return Err(ParseError::ValueNotFloat)
+        };
 
         // The metric type should be everything until the next pipe, or the end
         let metric_type = match self.take_until('|').as_ref() {
@@ -85,7 +121,7 @@ impl Parser {
             "g"   => MetricType::Gauge,
             "m"   => MetricType::Meter,
             "h"   => MetricType::Histogram,
-            other => MetricType::Unknown(other.to_string())
+            _other => return Err(ParseError::UnknownMetricType)
         };
 
         // The next part can either be the sample rate or tags,
@@ -93,49 +129,65 @@ impl Parser {
         let sample_rate = match self.peek() {
             Some('@') => {
                 self.skip(); // Skip the `@`
-                self.take_float_until('|', 0.0)
+                match self.take_float_until('|') {
+                    Ok(v) => Some(v),
+                    Err(_) => return Err(ParseError::SampleRateNotFloat)
+                }
             }
-            _ => 0.0
+            _ => None
         };
 
         // Peek the remaining string, if it starts with a pound (`#`)
         // try and match tags
-        if Some('#') == self.peek() {
+        let tags = if Some('#') == self.peek() {
+            let mut tags = BTreeMap::new();
+
             self.skip(); // Skip the `#`
 
             // Loop over the remaining buffer and see
             // if we can find key/value pairs, separated by : and ,
             // in the format key:value,key:value
             loop {
-                let key = self.take_until(':');
-                let val = self.take_until(',');
+                let tag = self.take_until(',');
+                if tag.is_empty() {
+                    break
+                }
 
-                // If we have both a key and a value, add it to the tags
-                // otherwise stop the loop
-                if key.len() > 0 && val.len() > 0 {
-                    tags.insert(key, val);
-                } else {
-                    break;
+                let mut split = tag.split(":");
+                match split.next() {
+                    Some(key) => match split.next() {
+                        Some(val) => {
+                            tags.insert(key.to_owned(), val.to_owned());
+                        },
+                        None => {
+                            tags.insert(key.to_owned(), "".to_owned());
+                        }
+                    },
+                    None => break
                 }
             }
+
+            Some(tags)
+        } else {
+            None
         };
 
-        return ParseResult {
+        Ok(Metric {
             name: name,
             value: value,
             metric_type: metric_type,
             sample_rate: sample_rate,
             tags: tags
-        }
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     use super::Parser;
-    use {ParseResult,MetricType};
+    use {Metric,MetricType};
 
     #[test]
     fn test_take_until() {
@@ -159,13 +211,13 @@ mod tests {
         let mut parser = Parser::new("10.01|number|string".to_string());
 
         // Returns float up untill the first occurrence of the character
-        assert_eq!(parser.take_float_until('|', 11.11), 10.01);
+        assert_eq!(parser.take_float_until('|'), Ok(10.01));
 
         // Moves the position to the first occurrence
         assert_eq!(parser.pos, 6);
 
-        // Returns the default if no float is found in the string up untill the character
-        assert_eq!(parser.take_float_until('|', 11.11), 11.11);
+        // Returns err if not float
+        assert!(parser.take_float_until('|').is_err());
 
         // Moves the position to the end of the string
         assert_eq!(parser.pos, 13);
@@ -199,21 +251,44 @@ mod tests {
     }
 
     #[test]
-    fn test_parse() {
+    fn test_parse_with_tags() {
         let parser = Parser::new("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
 
-        let mut tags = HashMap::new();
+        let mut tags = BTreeMap::new();
         tags.insert("hostname".to_string(), "frontend1".to_string());
         tags.insert("namespace".to_string(), "web".to_string());
 
-        let expected = ParseResult {
+        let expected = Metric {
             name: "service.duration".to_string(),
             value: 101.0,
             metric_type: MetricType::Timing,
-            sample_rate: 0.9,
-            tags: tags
+            sample_rate: Some(0.9),
+            tags: Some(tags)
         };
 
-        assert_eq!(parser.parse(), expected);
+        assert_eq!(parser.parse(), Ok(expected));
     }
+
+    #[test]
+    fn test_parse_without_tags() {
+        let parser = Parser::new("service.duration:101|ms|@0.9|".to_string());
+
+        let expected = Metric {
+            name: "service.duration".to_string(),
+            value: 101.0,
+            metric_type: MetricType::Timing,
+            sample_rate: Some(0.9),
+            tags: None
+        };
+
+        assert_eq!(parser.parse(), Ok(expected));
+    }
+
+    #[test]
+    fn test_parse_invalid() {
+        let parser = Parser::new("service.duration:101|aaa|@0.9|".to_string());
+        assert!(parser.parse().is_err());
+    }
+
+    // Details of all supported statsd messages are test in lib.rs
 }
