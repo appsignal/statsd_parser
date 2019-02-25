@@ -1,6 +1,6 @@
 [package]
 name        = "statsd-parser"
-version     = "0.1.1"
+version     = "0.2.0"
 authors     = ["Robert Beekman <robert@appsignal.com>"]
 description = "Library to parse (Dog)StatsD strings"
 readme      = "README.md"
