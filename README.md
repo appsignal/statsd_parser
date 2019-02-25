@@ -13,19 +13,18 @@ use statsd_parser;
 
 #[test]
 fn test_statsd_counter_with_sample_rate_and_tags() {
-    let mut tags = HashMap::new();
-    tags.insert("hostname".to_string(), "frontend1".to_string());
-    tags.insert("dc".to_string(), "ams01".to_string());
+    let mut tags = BTreeMap::new();
+    tags.insert("foo".to_string(), "bar".to_string());
+    tags.insert("moo".to_string(), "maa".to_string());
 
-    let expected = ParseResult {
+    let expected = Metric::Counter(Counter {
         name: "gorets".to_string(),
         value: 1.0,
-        metric_type: MetricType::Counter,
-        sample_rate: 0.9,
-        tags: tags
-    };
+        sample_rate: Some(0.9),
+        tags: Some(tags)
+    });
 
-    assert_eq!(statsd_parser::parse("gorets:1|c|@0.9|#hostname:frontend1,dc:ams01"), expected);
+    assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), Ok(expected));
 }
 ```
 
