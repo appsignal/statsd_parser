@@ -1,12 +1,12 @@
-use {Metric, ServiceCheck, Status};
+use {Message, Metric, ServiceCheck, Status};
 use super::{Parser, ParseError};
 
 pub trait ServiceStatusParser {
-    fn parse(self) -> Result<Metric, ParseError>;
+    fn parse(self) -> Result<Message, ParseError>;
 }
 
 impl ServiceStatusParser for Parser {
-    fn parse(mut self) -> Result<Metric, ParseError> {
+    fn parse(mut self) -> Result<Message, ParseError> {
         if self.chars.is_empty() {
             return Err(ParseError::EmptyInput)
         }
@@ -65,18 +65,22 @@ impl ServiceStatusParser for Parser {
             None
         };
 
-       Ok(Metric::ServiceCheck(ServiceCheck {
-           name: name,
-           status: status,
-           timestamp: timestamp,
-           hostname: hostname,
-           tags: tags,
-           message: message,
-       }))
+        let service_check = ServiceCheck {
+            status: status,
+            timestamp: timestamp,
+            hostname: hostname,
+            message: message
+        };
+
+        Ok(Message {
+            name: name,
+            tags: tags,
+            metric: Metric::ServiceCheck(service_check)
+        })
     }
 }
 
-pub fn parse(input: String) -> Result<Metric, ParseError> {
+pub fn parse(input: String) -> Result<Message, ParseError> {
     Parser::new(input).parse()
 }
 
@@ -85,7 +89,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::parse;
-    use {Metric, ServiceCheck, Status};
+    use {Message, Metric, ServiceCheck, Status};
 
     #[test]
     fn test_parse_with_tags() {
@@ -94,14 +98,16 @@ mod tests {
         let mut tags = BTreeMap::new();
         tags.insert("redis_instance".to_string(), "10.0.0.16:6379".to_string());
 
-        let expected = Metric::ServiceCheck(ServiceCheck {
+        let expected = Message {
             name: "Redis connection".to_string(),
-            status: Status::CRITICAL,
-            timestamp: Some(10101f64),
-            hostname: Some("frontend1".to_string()),
             tags: Some(tags),
-            message: Some("Redis connection timed out after 10s".to_string()),
-        });
+            metric: Metric::ServiceCheck(ServiceCheck {
+                status: Status::CRITICAL,
+                timestamp: Some(10101f64),
+                hostname: Some("frontend1".to_string()),
+                message: Some("Redis connection timed out after 10s".to_string()),
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }
@@ -110,14 +116,16 @@ mod tests {
     fn test_parse_without_tags() {
         let result = parse("_sc|Redis connection|0|d:10101|h:frontend1|m:Redis connection timed out after 10s".to_string());
 
-        let expected = Metric::ServiceCheck(ServiceCheck {
+        let expected = Message {
             name: "Redis connection".to_string(),
-            status: Status::OK,
-            timestamp: Some(10101f64),
-            hostname: Some("frontend1".to_string()),
             tags: None,
-            message: Some("Redis connection timed out after 10s".to_string()),
-        });
+            metric: Metric::ServiceCheck(ServiceCheck {
+                status: Status::OK,
+                timestamp: Some(10101f64),
+                hostname: Some("frontend1".to_string()),
+                message: Some("Redis connection timed out after 10s".to_string()),
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }
@@ -126,14 +134,16 @@ mod tests {
     fn test_parse_without_duration() {
         let result = parse("_sc|Redis connection|1|h:frontend1|m:Redis connection timed out after 10s".to_string());
 
-        let expected = Metric::ServiceCheck(ServiceCheck {
+        let expected = Message {
             name: "Redis connection".to_string(),
-            status: Status::WARNING,
-            timestamp: None,
-            hostname: Some("frontend1".to_string()),
             tags: None,
-            message: Some("Redis connection timed out after 10s".to_string()),
-        });
+            metric: Metric::ServiceCheck(ServiceCheck {
+                status: Status::WARNING,
+                timestamp: None,
+                hostname: Some("frontend1".to_string()),
+                message: Some("Redis connection timed out after 10s".to_string()),
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }
@@ -142,14 +152,16 @@ mod tests {
     fn test_parse_minimum_required() {
         let result = parse("_sc|Redis connection".to_string());
 
-        let expected = Metric::ServiceCheck(ServiceCheck {
+        let expected = Message {
             name: "Redis connection".to_string(),
-            status: Status::UNKNOWN,
-            timestamp: None,
-            hostname: None,
             tags: None,
-            message: None,
-        });
+            metric:  Metric::ServiceCheck(ServiceCheck {
+                status: Status::UNKNOWN,
+                timestamp: None,
+                hostname: None,
+                message: None,
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }

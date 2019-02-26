@@ -5,6 +5,13 @@ mod parser;
 pub use parser::ParseError;
 
 #[derive(Debug,PartialEq)]
+pub struct Message {
+    pub name: String,
+    pub tags: Option<BTreeMap<String, String>>,
+    pub metric: Metric
+}
+
+#[derive(Debug,PartialEq)]
 pub enum Metric {
     Gauge(Gauge),
     Counter(Counter),
@@ -24,56 +31,44 @@ pub enum Status {
 
 #[derive(Debug,PartialEq)]
 pub struct Gauge {
-    pub name: String,
     pub value: f64,
     pub sample_rate: Option<f64>,
-    pub tags: Option<BTreeMap<String, String>>
 }
 
 #[derive(Debug,PartialEq)]
 pub struct Counter {
-    pub name: String,
     pub value: f64,
     pub sample_rate: Option<f64>,
-    pub tags: Option<BTreeMap<String, String>>
 }
 
 #[derive(Debug,PartialEq)]
 pub struct Timing {
-    pub name: String,
     pub value: f64,
     pub sample_rate: Option<f64>,
-    pub tags: Option<BTreeMap<String, String>>
 }
 
 #[derive(Debug,PartialEq)]
 pub struct Histogram {
-    pub name: String,
     pub value: f64,
     pub sample_rate: Option<f64>,
-    pub tags: Option<BTreeMap<String, String>>
 }
 
 #[derive(Debug,PartialEq)]
 pub struct Meter {
-    pub name: String,
     pub value: f64,
     pub sample_rate: Option<f64>,
-    pub tags: Option<BTreeMap<String, String>>
 }
 
 #[derive(Debug,PartialEq)]
 pub struct ServiceCheck {
-    pub name: String,
     pub status: Status,
     pub timestamp: Option<f64>,
     pub hostname: Option<String>,
-    pub tags: Option<BTreeMap<String, String>>,
     pub message: Option<String>,
 }
 
 /// Parse a statsd string and return a metric or error message
-pub fn parse<S: Into<String>>(input: S) -> Result<Metric, ParseError> {
+pub fn parse<S: Into<String>>(input: S) -> Result<Message, ParseError> {
     let string = input.into();
 
     if string.starts_with("_sc") {
@@ -85,79 +80,91 @@ pub fn parse<S: Into<String>>(input: S) -> Result<Metric, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use super::{Metric};
+    use {Message, Metric};
     use std::collections::BTreeMap;
 
     use super::*;
 
     #[test]
     fn test_statsd_counter() {
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:1|c"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_gauge() {
-        let expected = Metric::Gauge(Gauge {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Gauge(Gauge {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:1|g"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_time() {
-        let expected = Metric::Timing(Timing {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 233.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Timing(Timing {
+                value: 233.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:233|ms"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_histogram() {
-        let expected = Metric::Histogram(Histogram {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 233.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Histogram(Histogram {
+                value: 233.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:233|h"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_meter() {
-        let expected = Metric::Meter(Meter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 233.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Meter(Meter {
+                value: 233.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:233|m"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_counter_with_sample_rate() {
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: Some(0.5),
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: Some(0.5),
+            })
+        };
 
         assert_eq!(parse("gorets:1|c|@0.5"), Ok(expected));
     }
@@ -167,12 +174,14 @@ mod tests {
         let mut tags = BTreeMap::new();
         tags.insert("foo".to_string(), "bar".to_string());
 
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: None,
-            tags: Some(tags)
-        });
+            tags: Some(tags),
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:1|c|#foo:bar"), Ok(expected));
     }
@@ -183,12 +192,14 @@ mod tests {
         tags.insert("foo".to_string(), "".to_string());
         tags.insert("moo".to_string(), "".to_string());
 
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: None,
-            tags: Some(tags)
-        });
+            tags: Some(tags),
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("gorets:1|c|#foo,moo"), Ok(expected));
     }
@@ -199,24 +210,28 @@ mod tests {
         tags.insert("foo".to_string(), "bar".to_string());
         tags.insert("moo".to_string(), "maa".to_string());
 
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "gorets".to_string(),
-            value: 1.0,
-            sample_rate: Some(0.9),
-            tags: Some(tags)
-        });
+            tags: Some(tags),
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: Some(0.9),
+            })
+        };
 
         assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), Ok(expected));
     }
 
     #[test]
     fn test_statsd_utf8_boundary() {
-        let expected = Metric::Counter(Counter {
+        let expected = Message {
             name: "goretsβ".to_string(),
-            value: 1.0,
-            sample_rate: None,
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
 
         assert_eq!(parse("goretsβ:1|c"), Ok(expected));
     }
