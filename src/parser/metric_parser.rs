@@ -1,12 +1,12 @@
-use {Metric, Gauge, Timing, Counter, Meter, Histogram};
+use {Message, Metric, Gauge, Counter, Timing, Histogram, Meter};
 use super::{Parser, ParseError};
 
 pub trait MetricParser {
-    fn parse(self) -> Result<Metric, ParseError>;
+    fn parse(self) -> Result<Message, ParseError>;
 }
 
 impl MetricParser for Parser {
-    fn parse(mut self) -> Result<Metric, ParseError> {
+    fn parse(mut self) -> Result<Message, ParseError> {
         if self.chars.is_empty() {
             return Err(ParseError::EmptyInput)
         }
@@ -48,53 +48,49 @@ impl MetricParser for Parser {
             None
         };
 
-        match metric_type.as_ref() {
+        let metric = match metric_type.as_ref() {
             "ms" => {
-                Ok(Metric::Timing(Timing {
-                    name: name,
+                Metric::Timing(Timing {
                     value: value,
                     sample_rate: sample_rate,
-                    tags: tags
-                }))
+                })
             },
             "c" => {
-                Ok(Metric::Counter(Counter {
-                    name: name,
+                Metric::Counter(Counter {
                     value: value,
                     sample_rate: sample_rate,
-                    tags: tags
-                }))
+                })
             },
             "g" => {
-                Ok(Metric::Gauge(Gauge {
-                    name: name,
+                Metric::Gauge(Gauge {
                     value: value,
                     sample_rate: sample_rate,
-                    tags: tags
-                }))
+                })
             },
             "m" => {
-                Ok(Metric::Meter(Meter {
-                    name: name,
+                Metric::Meter(Meter {
                     value: value,
                     sample_rate: sample_rate,
-                    tags: tags
-                }))
+                })
             },
             "h" => {
-                Ok(Metric::Histogram(Histogram {
-                    name: name,
+                Metric::Histogram(Histogram {
                     value: value,
                     sample_rate: sample_rate,
-                    tags: tags
-                }))
+                })
             },
-            _ => Err(ParseError::UnknownMetricType)
-        }
+            _ => return Err(ParseError::UnknownMetricType)
+        };
+
+        Ok(Message {
+            name: name,
+            tags: tags,
+            metric: metric
+        })
     }
 }
 
-pub fn parse(input: String) -> Result<Metric, ParseError> {
+pub fn parse(input: String) -> Result<Message, ParseError> {
     Parser::new(input).parse()
 }
 
@@ -103,7 +99,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::parse;
-    use {Metric, Timing};
+    use {Message, Metric, Timing};
 
     #[test]
     fn test_parse_with_tags() {
@@ -113,12 +109,14 @@ mod tests {
         tags.insert("hostname".to_string(), "frontend1".to_string());
         tags.insert("namespace".to_string(), "web".to_string());
 
-        let expected = Metric::Timing(Timing {
+        let expected = Message {
             name: "service.duration".to_string(),
-            value: 101.0,
-            sample_rate: Some(0.9),
-            tags: Some(tags)
-        });
+            tags: Some(tags),
+            metric: Metric::Timing(Timing {
+                value: 101.0,
+                sample_rate: Some(0.9),
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }
@@ -127,12 +125,14 @@ mod tests {
     fn test_parse_without_tags() {
         let result = parse("service.duration:101|ms|@0.9|".to_string());
 
-        let expected = Metric::Timing(Timing {
+        let expected = Message {
             name: "service.duration".to_string(),
-            value: 101.0,
-            sample_rate: Some(0.9),
-            tags: None
-        });
+            tags: None,
+            metric: Metric::Timing(Timing {
+                value: 101.0,
+                sample_rate: Some(0.9),
+            })
+        };
 
         assert_eq!(result, Ok(expected));
     }
