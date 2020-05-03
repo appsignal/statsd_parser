@@ -1,0 +1,16 @@
+version: v1.0
+name: statsd_parser
+agent:
+  machine:
+    type: e1-standard-2
+  containers:
+    - name: main
+      image: semaphoreci/rust:1.43
+blocks:
+  - name: Tests
+    task:
+      jobs:
+      - name: cargo test
+        commands:
+          - checkout
+          - cargo test
