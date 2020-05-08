@@ -100,6 +100,20 @@ mod tests {
     }
 
     #[test]
+    fn test_statsd_counter_newline() {
+        let expected = Message {
+            name: "gorets".to_string(),
+            tags: None,
+            metric: Metric::Counter(Counter {
+                value: 1.0,
+                sample_rate: None,
+            })
+        };
+
+        assert_eq!(parse("gorets:1|c\n"), Ok(expected));
+    }
+
+    #[test]
     fn test_statsd_gauge() {
         let expected = Message {
             name: "gorets".to_string(),

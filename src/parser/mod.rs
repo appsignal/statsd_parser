@@ -53,7 +53,7 @@ pub struct Parser {
 impl Parser {
     // Returns a Parser for given string
     pub fn new(buf: String) -> Parser {
-        let chars: Vec<char> = buf.chars().collect();
+        let chars: Vec<char> = buf.trim_end().chars().collect();
         let len = chars.len();
         Parser {
             chars: chars,
