@@ -1,6 +1,6 @@
 # (Dog)statsD Parser
 
-[![Build Status](https://travis-ci.org/appsignal/statsd_parser.svg?branch=master)](https://travis-ci.org/appsignal/statsd_parser)
+[![Build Status](https://travis-ci.org/appsignal/statsd_parser.svg?branch=main)](https://travis-ci.org/appsignal/statsd_parser)
 [![Crate](http://meritbadge.herokuapp.com/statsd_parser)](https://crates.io/crates/statsd_parser)
 
 Parses (Dog)StatsD strings and returns a normalized struct.
