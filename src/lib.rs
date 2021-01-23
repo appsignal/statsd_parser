@@ -18,6 +18,8 @@ pub enum Metric {
     Timing(Timing),
     Histogram(Histogram),
     Meter(Meter),
+    Distribution(Distribution),
+    Set(Set),
     ServiceCheck(ServiceCheck)
 }
 
@@ -55,6 +57,18 @@ pub struct Histogram {
 
 #[derive(Debug,PartialEq)]
 pub struct Meter {
+    pub value: f64,
+    pub sample_rate: Option<f64>,
+}
+
+#[derive(Debug,PartialEq)]
+pub struct Distribution {
+    pub value: f64,
+    pub sample_rate: Option<f64>,
+}
+
+#[derive(Debug,PartialEq)]
+pub struct Set {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
@@ -153,6 +167,34 @@ mod tests {
         };
 
         assert_eq!(parse("gorets:233|h"), Ok(expected));
+    }
+
+    #[test]
+    fn test_statsd_distribution() {
+        let expected = Message {
+            name: "gorets".to_string(),
+            tags: None,
+            metric: Metric::Distribution(Distribution {
+                value: 233.0,
+                sample_rate: None,
+            })
+        };
+
+        assert_eq!(parse("gorets:233|d"), Ok(expected));
+    }
+
+    #[test]
+    fn test_statsd_set() {
+        let expected = Message {
+            name: "gorets".to_string(),
+            tags: None,
+            metric: Metric::Set(Set {
+                value: 233.0,
+                sample_rate: None,
+            })
+        };
+
+        assert_eq!(parse("gorets:233|s"), Ok(expected));
     }
 
     #[test]
