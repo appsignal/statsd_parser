@@ -1,4 +1,4 @@
-use {Message, Metric, Gauge, Counter, Timing, Histogram, Meter};
+use {Message, Metric, Gauge, Counter, Timing, Histogram, Meter, Distribution, Set};
 use super::{Parser, ParseError};
 
 pub trait MetricParser {
@@ -79,6 +79,18 @@ impl MetricParser for Parser {
                     sample_rate: sample_rate,
                 })
             },
+            "d" => {
+                Metric::Distribution(Distribution {
+                    value: value,
+                    sample_rate: sample_rate,
+                })
+            },
+            "s" => {
+                Metric::Set(Set {
+                    value: value,
+                    sample_rate: sample_rate,                        
+                })
+            }
             _ => return Err(ParseError::UnknownMetricType)
         };
 
