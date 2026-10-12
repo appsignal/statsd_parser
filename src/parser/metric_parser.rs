@@ -1,5 +1,5 @@
-use {Message, Metric, Gauge, Counter, Timing, Histogram, Meter, Distribution, Set};
-use super::{Parser, ParseError};
+use super::{ParseError, Parser};
+use {Counter, Distribution, Gauge, Histogram, Message, Meter, Metric, Set, Timing};
 
 pub trait MetricParser {
     fn parse(self) -> Result<Message, ParseError>;
@@ -8,20 +8,20 @@ pub trait MetricParser {
 impl MetricParser for Parser {
     fn parse(mut self) -> Result<Message, ParseError> {
         if self.chars.is_empty() {
-            return Err(ParseError::EmptyInput)
+            return Err(ParseError::EmptyInput);
         }
 
         // Start with the name
         let name = self.take_until(vec![':']);
 
         if name.is_empty() {
-            return Err(ParseError::NoName)
+            return Err(ParseError::NoName);
         }
 
         // The value should be everything until the first pipe (`|`)
         let value = match self.take_float_until(vec!['|']) {
             Ok(v) => v,
-            Err(_) => return Err(ParseError::ValueNotFloat)
+            Err(_) => return Err(ParseError::ValueNotFloat),
         };
 
         // The metric type should be everything until the next pipe, or the end
@@ -34,10 +34,10 @@ impl MetricParser for Parser {
                 self.skip(); // Skip the `@`
                 match self.take_float_until(vec!['|']) {
                     Ok(v) => Some(v),
-                    Err(_) => return Err(ParseError::SampleRateNotFloat)
+                    Err(_) => return Err(ParseError::SampleRateNotFloat),
                 }
             }
-            _ => None
+            _ => None,
         };
 
         // Peek the remaining string, if it starts with a pound (`#`)
@@ -49,55 +49,41 @@ impl MetricParser for Parser {
         };
 
         let metric = match metric_type.as_ref() {
-            "ms" => {
-                Metric::Timing(Timing {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "c" => {
-                Metric::Counter(Counter {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "g" => {
-                Metric::Gauge(Gauge {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "m" => {
-                Metric::Meter(Meter {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "h" => {
-                Metric::Histogram(Histogram {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "d" => {
-                Metric::Distribution(Distribution {
-                    value: value,
-                    sample_rate: sample_rate,
-                })
-            },
-            "s" => {
-                Metric::Set(Set {
-                    value: value,
-                    sample_rate: sample_rate,                        
-                })
-            }
-            _ => return Err(ParseError::UnknownMetricType)
+            "ms" => Metric::Timing(Timing {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "c" => Metric::Counter(Counter {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "g" => Metric::Gauge(Gauge {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "m" => Metric::Meter(Meter {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "h" => Metric::Histogram(Histogram {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "d" => Metric::Distribution(Distribution {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            "s" => Metric::Set(Set {
+                value: value,
+                sample_rate: sample_rate,
+            }),
+            _ => return Err(ParseError::UnknownMetricType),
         };
 
         Ok(Message {
             name: name,
             tags: tags,
-            metric: metric
+            metric: metric,
         })
     }
 }
@@ -115,7 +101,8 @@ mod tests {
 
     #[test]
     fn test_parse_with_tags() {
-        let result = parse("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
+        let result =
+            parse("service.duration:101|ms|@0.9|#hostname:frontend1,namespace:web".to_string());
 
         let mut tags = BTreeMap::new();
         tags.insert("hostname".to_string(), "frontend1".to_string());
@@ -127,7 +114,7 @@ mod tests {
             metric: Metric::Timing(Timing {
                 value: 101.0,
                 sample_rate: Some(0.9),
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));
@@ -143,7 +130,7 @@ mod tests {
             metric: Metric::Timing(Timing {
                 value: 101.0,
                 sample_rate: Some(0.9),
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));

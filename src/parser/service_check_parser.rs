@@ -1,5 +1,5 @@
+use super::{ParseError, Parser};
 use {Message, Metric, ServiceCheck, Status};
-use super::{Parser, ParseError};
 
 pub trait ServiceStatusParser {
     fn parse(self) -> Result<Message, ParseError>;
@@ -8,7 +8,7 @@ pub trait ServiceStatusParser {
 impl ServiceStatusParser for Parser {
     fn parse(mut self) -> Result<Message, ParseError> {
         if self.chars.is_empty() {
-            return Err(ParseError::EmptyInput)
+            return Err(ParseError::EmptyInput);
         }
 
         // Start with the service check tag
@@ -17,7 +17,7 @@ impl ServiceStatusParser for Parser {
         // Get the name
         let name = self.take_until(vec!['|']);
         if name.is_empty() {
-            return Err(ParseError::NoName)
+            return Err(ParseError::NoName);
         }
 
         // Get the status
@@ -25,7 +25,7 @@ impl ServiceStatusParser for Parser {
             "0" => Status::OK,
             "1" => Status::WARNING,
             "2" => Status::CRITICAL,
-            _ => Status::UNKNOWN
+            _ => Status::UNKNOWN,
         };
 
         // Peek the string to see if we need to parse a timestamp
@@ -34,7 +34,7 @@ impl ServiceStatusParser for Parser {
             self.skip();
             match self.take_float_until(vec!['|']) {
                 Ok(v) => Some(v),
-                Err(_) => return Err(ParseError::ValueNotFloat)
+                Err(_) => return Err(ParseError::ValueNotFloat),
             }
         } else {
             None
@@ -69,13 +69,13 @@ impl ServiceStatusParser for Parser {
             status: status,
             timestamp: timestamp,
             hostname: hostname,
-            message: message
+            message: message,
         };
 
         Ok(Message {
             name: name,
             tags: tags,
-            metric: Metric::ServiceCheck(service_check)
+            metric: Metric::ServiceCheck(service_check),
         })
     }
 }
@@ -106,7 +106,7 @@ mod tests {
                 timestamp: Some(10101f64),
                 hostname: Some("frontend1".to_string()),
                 message: Some("Redis connection timed out after 10s".to_string()),
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));
@@ -114,7 +114,10 @@ mod tests {
 
     #[test]
     fn test_parse_without_tags() {
-        let result = parse("_sc|Redis connection|0|d:10101|h:frontend1|m:Redis connection timed out after 10s".to_string());
+        let result = parse(
+            "_sc|Redis connection|0|d:10101|h:frontend1|m:Redis connection timed out after 10s"
+                .to_string(),
+        );
 
         let expected = Message {
             name: "Redis connection".to_string(),
@@ -124,7 +127,7 @@ mod tests {
                 timestamp: Some(10101f64),
                 hostname: Some("frontend1".to_string()),
                 message: Some("Redis connection timed out after 10s".to_string()),
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));
@@ -132,7 +135,9 @@ mod tests {
 
     #[test]
     fn test_parse_without_duration() {
-        let result = parse("_sc|Redis connection|1|h:frontend1|m:Redis connection timed out after 10s".to_string());
+        let result = parse(
+            "_sc|Redis connection|1|h:frontend1|m:Redis connection timed out after 10s".to_string(),
+        );
 
         let expected = Message {
             name: "Redis connection".to_string(),
@@ -142,7 +147,7 @@ mod tests {
                 timestamp: None,
                 hostname: Some("frontend1".to_string()),
                 message: Some("Redis connection timed out after 10s".to_string()),
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));
@@ -155,12 +160,12 @@ mod tests {
         let expected = Message {
             name: "Redis connection".to_string(),
             tags: None,
-            metric:  Metric::ServiceCheck(ServiceCheck {
+            metric: Metric::ServiceCheck(ServiceCheck {
                 status: Status::UNKNOWN,
                 timestamp: None,
                 hostname: None,
                 message: None,
-            })
+            }),
         };
 
         assert_eq!(result, Ok(expected));
