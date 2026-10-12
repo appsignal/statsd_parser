@@ -1,13 +1,12 @@
-use std::{error,fmt};
+use std::collections::BTreeMap;
 use std::num::ParseFloatError;
 use std::vec::Vec;
-use std::collections::BTreeMap;
-
+use std::{error, fmt};
 
 pub mod metric_parser;
 pub mod service_check_parser;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum ParseError {
     /// No content in statsd message
     EmptyInput,
@@ -31,23 +30,23 @@ impl fmt::Display for ParseError {
             ParseError::NoName => write!(f, "No name in input"),
             ParseError::ValueNotFloat => write!(f, "Value is not a float"),
             ParseError::SampleRateNotFloat => write!(f, "Sample rate is not a float"),
-            ParseError::UnknownMetricType => write!(f, "Unknown metric type")
+            ParseError::UnknownMetricType => write!(f, "Unknown metric type"),
         }
     }
 }
 
 impl error::Error for ParseError {
-  // Implement description so that older versions of rust still work
-  fn description(&self) -> &str {
-    "description() is deprecated; use Display"
-  }
+    // Implement description so that older versions of rust still work
+    fn description(&self) -> &str {
+        "description() is deprecated; use Display"
+    }
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Parser {
     chars: Vec<char>,
     len: usize,
-    pos: usize
+    pos: usize,
 }
 
 impl Parser {
@@ -55,11 +54,7 @@ impl Parser {
     pub fn new(buf: String) -> Parser {
         let chars: Vec<char> = buf.trim_end().chars().collect();
         let len = chars.len();
-        Parser {
-            chars: chars,
-            len:   len,
-            pos:   0
-        }
+        Parser { chars, len, pos: 0 }
     }
 
     /// Consumes the buffer until the given character is found
@@ -68,12 +63,12 @@ impl Parser {
         let mut chars = Vec::new();
         loop {
             if self.pos >= self.len {
-                break
+                break;
             }
             let current_char = self.chars[self.pos];
             self.pos += 1;
             if to_match.contains(&current_char) {
-                break
+                break;
             } else {
                 chars.push(current_char);
             }
@@ -102,7 +97,7 @@ impl Parser {
         if self.pos == 0 {
             None
         } else {
-            Some(self.chars[self.pos - 1 ])
+            Some(self.chars[self.pos - 1])
         }
     }
 
@@ -122,24 +117,24 @@ impl Parser {
         loop {
             // Stop the loop if we've encountered a separator (|)
             if Some('|') == self.last() {
-              break
+                break;
             }
 
             // Stop the loop if we have nothing left to parse
             let tag = self.take_until(vec![',', '|']);
             if tag.is_empty() {
-                break
+                break;
             }
 
             // Split the string on ':' and use the first part as key, last parts as value
             // host:localhost:3000 will become key: host, value: localhost:3000
-            let mut split= tag.split(":");
+            let mut split = tag.split(":");
             match split.next() {
                 Some(key) => {
-                  let parts: Vec<&str> = split.collect();
-                  tags.insert(key.to_owned(), parts.join(":"))
-                },
-                None => break
+                    let parts: Vec<&str> = split.collect();
+                    tags.insert(key.to_owned(), parts.join(":"))
+                }
+                None => break,
             };
         }
 
@@ -233,7 +228,9 @@ mod tests {
 
     #[test]
     fn test_parse_tags() {
-        let mut parser = Parser::new("#hostname:frontend1,redis_instance:10.0.0.16:6379,namespace:web".to_string());
+        let mut parser = Parser::new(
+            "#hostname:frontend1,redis_instance:10.0.0.16:6379,namespace:web".to_string(),
+        );
 
         let mut tags = BTreeMap::new();
         tags.insert("hostname".to_string(), "frontend1".to_string());

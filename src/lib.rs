@@ -4,14 +4,14 @@ mod parser;
 
 pub use parser::ParseError;
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Message {
     pub name: String,
     pub tags: Option<BTreeMap<String, String>>,
-    pub metric: Metric
+    pub metric: Metric,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Metric {
     Gauge(Gauge),
     Counter(Counter),
@@ -20,60 +20,60 @@ pub enum Metric {
     Meter(Meter),
     Distribution(Distribution),
     Set(Set),
-    ServiceCheck(ServiceCheck)
+    ServiceCheck(ServiceCheck),
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Status {
     OK,
     WARNING,
     CRITICAL,
-    UNKNOWN
+    UNKNOWN,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Gauge {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Counter {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Timing {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Histogram {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Meter {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Distribution {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct Set {
     pub value: f64,
     pub sample_rate: Option<f64>,
 }
 
-#[derive(Debug,PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct ServiceCheck {
     pub status: Status,
     pub timestamp: Option<f64>,
@@ -94,8 +94,8 @@ pub fn parse<S: Into<String>>(input: S) -> Result<Message, ParseError> {
 
 #[cfg(test)]
 mod tests {
-    use {Message, Metric};
     use std::collections::BTreeMap;
+    use {Message, Metric};
 
     use super::*;
 
@@ -107,7 +107,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c"), Ok(expected));
@@ -121,7 +121,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c\n"), Ok(expected));
@@ -135,7 +135,7 @@ mod tests {
             metric: Metric::Gauge(Gauge {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|g"), Ok(expected));
@@ -149,7 +149,7 @@ mod tests {
             metric: Metric::Timing(Timing {
                 value: 233.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:233|ms"), Ok(expected));
@@ -163,7 +163,7 @@ mod tests {
             metric: Metric::Histogram(Histogram {
                 value: 233.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:233|h"), Ok(expected));
@@ -177,7 +177,7 @@ mod tests {
             metric: Metric::Distribution(Distribution {
                 value: 233.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:233|d"), Ok(expected));
@@ -191,7 +191,7 @@ mod tests {
             metric: Metric::Set(Set {
                 value: 233.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:233|s"), Ok(expected));
@@ -205,7 +205,7 @@ mod tests {
             metric: Metric::Meter(Meter {
                 value: 233.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:233|m"), Ok(expected));
@@ -219,7 +219,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: Some(0.5),
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c|@0.5"), Ok(expected));
@@ -236,7 +236,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c|#foo:bar"), Ok(expected));
@@ -254,7 +254,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c|#foo,moo"), Ok(expected));
@@ -272,7 +272,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: Some(0.9),
-            })
+            }),
         };
 
         assert_eq!(parse("gorets:1|c|@0.9|#foo:bar,moo:maa"), Ok(expected));
@@ -286,7 +286,7 @@ mod tests {
             metric: Metric::Counter(Counter {
                 value: 1.0,
                 sample_rate: None,
-            })
+            }),
         };
 
         assert_eq!(parse("goretsβ:1|c"), Ok(expected));
@@ -309,7 +309,10 @@ mod tests {
 
     #[test]
     fn test_statsd_sample_rate_not_float() {
-        assert_eq!(parse("gorets:1|c|@aaa"), Err(ParseError::SampleRateNotFloat));
+        assert_eq!(
+            parse("gorets:1|c|@aaa"),
+            Err(ParseError::SampleRateNotFloat)
+        );
     }
 
     #[test]
