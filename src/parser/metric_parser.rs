@@ -49,42 +49,17 @@ impl MetricParser for Parser {
         };
 
         let metric = match metric_type.as_ref() {
-            "ms" => Metric::Timing(Timing {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "c" => Metric::Counter(Counter {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "g" => Metric::Gauge(Gauge {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "m" => Metric::Meter(Meter {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "h" => Metric::Histogram(Histogram {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "d" => Metric::Distribution(Distribution {
-                value: value,
-                sample_rate: sample_rate,
-            }),
-            "s" => Metric::Set(Set {
-                value: value,
-                sample_rate: sample_rate,
-            }),
+            "ms" => Metric::Timing(Timing { value, sample_rate }),
+            "c" => Metric::Counter(Counter { value, sample_rate }),
+            "g" => Metric::Gauge(Gauge { value, sample_rate }),
+            "m" => Metric::Meter(Meter { value, sample_rate }),
+            "h" => Metric::Histogram(Histogram { value, sample_rate }),
+            "d" => Metric::Distribution(Distribution { value, sample_rate }),
+            "s" => Metric::Set(Set { value, sample_rate }),
             _ => return Err(ParseError::UnknownMetricType),
         };
 
-        Ok(Message {
-            name: name,
-            tags: tags,
-            metric: metric,
-        })
+        Ok(Message { name, tags, metric })
     }
 }
 

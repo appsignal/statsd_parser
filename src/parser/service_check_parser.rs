@@ -66,15 +66,15 @@ impl ServiceStatusParser for Parser {
         };
 
         let service_check = ServiceCheck {
-            status: status,
-            timestamp: timestamp,
-            hostname: hostname,
-            message: message,
+            status,
+            timestamp,
+            hostname,
+            message,
         };
 
         Ok(Message {
-            name: name,
-            tags: tags,
+            name,
+            tags,
             metric: Metric::ServiceCheck(service_check),
         })
     }

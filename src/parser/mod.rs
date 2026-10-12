@@ -54,11 +54,7 @@ impl Parser {
     pub fn new(buf: String) -> Parser {
         let chars: Vec<char> = buf.trim_end().chars().collect();
         let len = chars.len();
-        Parser {
-            chars: chars,
-            len: len,
-            pos: 0,
-        }
+        Parser { chars, len, pos: 0 }
     }
 
     /// Consumes the buffer until the given character is found
