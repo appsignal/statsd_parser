@@ -1,8 +1,5 @@
 # (Dog)statsD Parser
 
-[![Build Status](https://travis-ci.org/appsignal/statsd_parser.svg?branch=main)](https://travis-ci.org/appsignal/statsd_parser)
-[![Crate](http://meritbadge.herokuapp.com/statsd_parser)](https://crates.io/crates/statsd_parser)
-
 Parses (Dog)StatsD strings and returns a normalized struct.
 
 All [standard StatsD](https://github.com/b/statsd_spec) metric types are implemented.
